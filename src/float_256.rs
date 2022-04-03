@@ -105,6 +105,7 @@ macro_rules! make_vector_type {
                 unsafe { intrinsic!(_mm256_movemask)(self.0) as u32 }
             }
 
+            /// ~self & rhs
             #[inline(always)]
             #[must_use]
             pub fn andnot(self, rhs: Self) -> Self {
@@ -173,18 +174,18 @@ macro_rules! make_vector_type {
                 unsafe { Self(intrinsic!(_mm256_sqrt)(self.0)) }
             }
 
+            /// (self * b) + c
             #[cfg(target_feature = "fma")]
             #[inline(always)]
             #[must_use]
-            /// (self * b) + c
             pub fn fmadd(self, b: Self, c: Self) -> Self {
                 unsafe { Self(intrinsic!(_mm256_fmadd)(self.0, b.0, c.0)) }
             }
 
+            /// (self * b) - c
             #[cfg(target_feature = "fma")]
             #[inline(always)]
             #[must_use]
-            /// (self * b) - c
             pub fn fmsub(self, b: Self, c: Self) -> Self {
                 unsafe { Self(intrinsic!(_mm256_fmsub)(self.0, b.0, c.0)) }
             }
@@ -260,6 +261,12 @@ macro_rules! make_vector_type {
 
 make_vector_type!(Float32x8, f32, 8, __m256, ps);
 make_vector_type!(Float64x4, f64, 4, __m256d, pd);
+
+impl Float32x8 {
+    pub fn rsqrt(self) -> Self {
+        unsafe { Self(_mm256_rsqrt_ps(self.0)) }
+    }
+}
 
 impl VectorConvertInto<crate::Int32x8> for Float32x8 {
     #[inline(always)]

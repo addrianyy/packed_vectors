@@ -119,6 +119,7 @@ macro_rules! make_vector_type {
                 unsafe { _mm256_movemask_epi8(self.0) as u32 }
             }
 
+            /// ~self & rhs
             #[inline(always)]
             #[must_use]
             pub fn andnot(self, rhs: Self) -> Self {
