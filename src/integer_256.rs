@@ -13,6 +13,7 @@ macro_rules! impl_operator {
             type Output = Self;
 
             #[inline(always)]
+            #[must_use]
             $function
         }
 
@@ -39,16 +40,19 @@ macro_rules! make_vector_type {
             }
 
             #[inline(always)]
+            #[must_use]
             pub fn zero() -> Self {
                 unsafe { Self(_mm256_setzero_si256()) }
             }
 
             #[inline(always)]
+            #[must_use]
             pub fn from_array(array: [$type; $lanes]) -> Self {
                 unsafe { Self(_mm256_loadu_si256(array.as_ptr() as *const _)) }
             }
 
             #[inline(always)]
+            #[must_use]
             pub fn to_array(self) -> [$type; $lanes] {
                 unsafe {
                     let mut array: MaybeUninit<[$type; $lanes]> = MaybeUninit::uninit();
@@ -58,12 +62,14 @@ macro_rules! make_vector_type {
             }
 
             #[inline(always)]
+            #[must_use]
             pub fn andnot(self, rhs: Self) -> Self {
                 unsafe { Self(_mm256_andnot_si256(self.0, rhs.0)) }
             }
 
             /// Create mask from the most significant bit of each 8-bit element.
             #[inline(always)]
+            #[must_use]
             pub fn mask(self) -> u32 {
                 unsafe { _mm256_movemask_epi8(self.0) as u32 }
             }
@@ -108,29 +114,44 @@ make_vector_type!(Int64x4, i64, 4);
 make_vector_type!(Uint64x4, u64, 4);
 
 macro_rules! impl_basic_operations {
-    ($signed: ident, $signed_type: ty, $unsigned: ident, $unsigned_type: ident,
-        $splat: ident, $add: ident, $sub: ident, $cmp_eq: ident, $cmp_gt: ident) => {
-        impl_basic_operations!($signed, $signed_type, $splat, $add, $sub, $cmp_eq);
-        impl_basic_operations!($unsigned, $unsigned_type, $splat, $add, $sub, $cmp_eq);
+    (
+        $signed: ident, $signed_type: ty, $unsigned: ident, $unsigned_type: ident,
+        $splat: ident, $add: ident, $sub: ident, $insert: ident, 
+        $cmp_eq: ident, $cmp_gt: ident
+    ) => {
+        impl_basic_operations!($signed, $signed_type, $splat, $add, $sub, $insert, $cmp_eq);
+        impl_basic_operations!($unsigned, $unsigned_type, $splat, $add, $sub, $insert, $cmp_eq);
 
         impl $signed {
             #[inline(always)]
+            #[must_use]
             pub fn gt(self, rhs: Self) -> Self {
                 unsafe { Self($cmp_gt(self.0, rhs.0)) }
             }
         }
     };
 
-    ($name: ident, $type: ty, $splat: ident, $add: ident, $sub: ident, $cmp_eq: ident) => {
+    (
+        $name: ident, $type: ty, $splat: ident, $add: ident,
+        $sub: ident, $insert: ident, $cmp_eq: ident
+    ) => {
         impl $name {
             #[inline(always)]
+            #[must_use]
             pub fn splat(v: $type) -> Self {
                 unsafe { Self($splat(v as _)) }
             }
 
             #[inline(always)]
+            #[must_use]
             pub fn eq(self, rhs: Self) -> Self {
                 unsafe { Self($cmp_eq(self.0, rhs.0)) }
+            }
+
+            #[inline(always)]
+            #[must_use]
+            pub fn insert<const I: i32>(self, value: $type) -> Self {
+                unsafe { Self($insert::<I>(self.0, value as _)) }
             }
         }
 
@@ -156,6 +177,7 @@ impl_basic_operations!(
     _mm256_set1_epi8,
     _mm256_add_epi8,
     _mm256_sub_epi8,
+    _mm256_insert_epi8,
     _mm256_cmpeq_epi8,
     _mm256_cmpgt_epi8
 );
@@ -168,6 +190,7 @@ impl_basic_operations!(
     _mm256_set1_epi16,
     _mm256_add_epi16,
     _mm256_sub_epi16,
+    _mm256_insert_epi16,
     _mm256_cmpeq_epi16,
     _mm256_cmpgt_epi16
 );
@@ -180,6 +203,7 @@ impl_basic_operations!(
     _mm256_set1_epi32,
     _mm256_add_epi32,
     _mm256_sub_epi32,
+    _mm256_insert_epi32,
     _mm256_cmpeq_epi32,
     _mm256_cmpgt_epi32
 );
@@ -192,6 +216,7 @@ impl_basic_operations!(
     _mm256_set1_epi64x,
     _mm256_add_epi64,
     _mm256_sub_epi64,
+    _mm256_insert_epi64,
     _mm256_cmpeq_epi64,
     _mm256_cmpgt_epi64
 );
@@ -205,11 +230,13 @@ macro_rules! impl_logical_shifts {
     ($name: ident, $left_shift: ident, $right_shift: ident) => {
         impl $name {
             #[inline(always)]
+            #[must_use]
             pub fn shl<const N: i32>(self) -> Self {
                 unsafe { Self($left_shift::<N>(self.0)) }
             }
 
             #[inline(always)]
+            #[must_use]
             pub fn shr_l<const N: i32>(self) -> Self {
                 unsafe { Self($right_shift::<N>(self.0)) }
             }
@@ -230,6 +257,7 @@ macro_rules! impl_arithmetic_shift {
     ($name: ident, $shift: ident) => {
         impl $name {
             #[inline(always)]
+            #[must_use]
             pub fn shr_a<const N: i32>(self) -> Self {
                 unsafe { Self($shift::<N>(self.0)) }
             }
@@ -249,6 +277,7 @@ macro_rules! impl_comparisons {
     ) => {
         impl $signed {
             #[inline(always)]
+            #[must_use]
             pub fn abs(self) -> Self {
                 unsafe { Self($signed_abs(self.0)) }
             }
@@ -261,11 +290,13 @@ macro_rules! impl_comparisons {
     ($name: ident, $max: ident, $min: ident) => {
         impl $name {
             #[inline(always)]
+            #[must_use]
             pub fn min(self, rhs: Self) -> Self {
                 unsafe { Self($min(self.0, rhs.0)) }
             }
 
             #[inline(always)]
+            #[must_use]
             pub fn max(self, rhs: Self) -> Self {
                 unsafe { Self($max(self.0, rhs.0)) }
             }
@@ -312,6 +343,7 @@ macro_rules! impl_blend {
     ($name: ident, $blend: ident) => {
         impl $name {
             #[inline(always)]
+            #[must_use]
             pub fn blend<const N: i32>(self, rhs: Self) -> Self {
                 unsafe { Self($blend::<N>(self.0, rhs.0)) }
             }
